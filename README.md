@@ -57,16 +57,3 @@ Formalmente o problema pode ser descrito assim.
     Resposta:	Uma sequência (c1, …, cn) ∈ [0..n]n com o menor número de zeros possível, tal que rainhas dispostas nas posições (i, ci) para cada 1 ≤ i ≤ n com ci ≠ 0 não podem se atacar nem ocupam posições em C (ci = 0 indica que nenhuma rainha é colocada na linha i).
 
 Por exemplo, a instância do tabuleiro 8x8 onde as casas de ambas as diagonais são proibidas é a instância (8, {(i, j) ∈ [1..n]×[1..n]: i = j ou i + j = 9}); uma resposta desta instância é a sequência (2, 5, 7, 1, 3, 8, 6, 4).
-
-O trabalho consiste em implementar duas soluções do problema das Rainhas com Casas Proibidas, uma baseada em "backtracking" e outra baseada na modelagem por meio de conjuntos independentes de um grafo, e compará-las quanto à eficiência.
-
-A especificação do trabalho está em trabalho-1.tar.gz, onde você vai encontrar os seguintes arquivos.
-trabalho-1/rainhas.h:
- 	a especificação do que deve ser implementado;
-trabalho-1/rainhas.c:
- 	um esqueleto de implementação do especificado em rainhas.h;
-trabalho-1/teste.c:
- 	um programa de teste a título de exemplo;
-trabalho-1/makefile:
- 	um makefile com as opções de compilação que serão usadas na correção.
-
