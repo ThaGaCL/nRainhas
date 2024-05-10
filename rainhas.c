@@ -62,7 +62,7 @@ unsigned int rainhaPodeSerColocada(unsigned int n, unsigned int linha, unsigned 
 }
 
 unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned int* r, tabuleiro* tab){
-    if(linha == n){
+    if(linha == n - 1){
         return 1;
     }
 
@@ -71,14 +71,17 @@ unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned
             continue;
         }
         if(rainhaPodeSerColocada(n, linha, i, r, tab)){
-            r[i] = i+1;
+            r[linha] = i+1;
 
             printf("Rainha colocada na linha %d, coluna %d\n", linha + 1, i + 1);
 
-            // Proibe a linha, a coluna e as diagonais
+            // Proibe a linha e a coluna
             for(unsigned int j = 0; j < n; j++){
-                if(tab->proibida[linha][j] == 0 && tab->proibida[j][i] == 0){
+                if(tab->proibida[linha][j] == 0){
                     tab->proibida[linha][j] = 2;
+                    tab->proibida[j][i] = 2;
+                }
+                if(tab->proibida[j][i] == 0){
                     tab->proibida[j][i] = 2;
                 }
             }
@@ -102,11 +105,22 @@ unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned
             printf("Rainha removida da linha %d, coluna %d\n", linha + 1, i + 1);
             r[i] = 0;
             for(unsigned int j = 0; j < n; j++){
-                if(tab->proibida[linha][j] == 2){
+                if((r[j] == 0)&&(tab->proibida[linha][j] == 2)){
                     tab->proibida[linha][j] = 0;
                     tab->proibida[j][i] = 0;
                 }
             }
+            for(unsigned int j = 0; j < n; j++){
+                for(unsigned int k = 0; k < n; k++){
+                    if(mesmaDiagonal(linha, i, j, k) && tab->proibida[j][k] == 2 && (r[j] == 0)){
+                        tab->proibida[j][k] = 0;    
+                    }
+                }
+            }
+            
+            tab->proibida[linha][i] = 0;
+
+            imprimeTabuleiro(n, tab);
             tab->proibida[linha][i] = 0; // Restaure a célula removida
         }
     }
