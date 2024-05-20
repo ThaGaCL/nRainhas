@@ -7,6 +7,10 @@ typedef struct tabuleiro{
     unsigned int** proibida;
 }tabuleiro;
 
+typedef struct grafo{
+    
+}Grafo;
+
 void inicializaTabuleiro(unsigned int n, tabuleiro* tab, unsigned int k, casa *proibida){
     tab->c = (casa**)malloc(n*sizeof(casa*));
     tab->proibida = (unsigned int**)malloc(n*sizeof(unsigned int*));
@@ -47,23 +51,24 @@ unsigned int casaProibida(unsigned int linha, unsigned int coluna, tabuleiro* ta
 }
 
 unsigned int rainhaPodeSerColocada(unsigned int n, unsigned int linha, unsigned int coluna, unsigned int* r, tabuleiro* tab){
-    
-    if(r[linha] != 0){
+    // Verificar se a linha já está ocupada
+    if (r[linha] != 0) {
         printf("Linha %d já está ocupada\n", linha);
         return 0;
     }
 
     // Verificar se a coluna está vazia
     for (unsigned int i = 0; i < n; i++) {
-        if ((r[i] == coluna + 1)) {
+        if (r[i] == coluna + 1) {  // coluna é base 0, r é base 1
             printf("Coluna %d já está ocupada\n", coluna);
             return 0;
         }
-    }    
+    }
     
     // Verificar diagonais superiores
     for (unsigned int i = 0; i < linha; i++) {
-        if (r[i] != 0 && abs(r[i] - coluna - 1) == abs(i - linha)) {
+        if (r[i] != 0 && abs(r[i] - 1 - coluna) == abs(i - linha)) {
+            printf("Diagonais superior conflitante na linha %d\n", i);
             return 0;
         }
     }
@@ -75,29 +80,27 @@ unsigned int rainhaPodeSerColocada(unsigned int n, unsigned int linha, unsigned 
 //      r[i] = j > 0 indica que a rainha da linha i+1 fica na coluna j;
 //      r[i] = 0     indica que não há rainha nenhuma na linha i+1
 unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned int* r, tabuleiro* tab){
-    if(linha == n - 1){
+    if (linha == n) {
         return 1;
     }
-    for(unsigned int j = 0; j < n; j++){
-        if(!casaProibida(linha, j, tab) && rainhaPodeSerColocada(n, linha, j, r, tab)){
-            r[linha] = j+1;
+    for (unsigned int j = 0; j < n; j++) {
+        if (!casaProibida(linha, j, tab) && rainhaPodeSerColocada(n, linha, j, r, tab)) {
+            r[linha] = j + 1;
 
-            printf("Rainha colocada na linha %d, coluna %d\n", linha, j);
+            printf("Rainha colocada na linha %d, coluna %d\n", linha + 1, j + 1);
 
-            if(rainhasBacktrackingRec(n, linha+1, r, tab)){
+            if (rainhasBacktrackingRec(n, linha + 1, r, tab)) {
                 return 1;
             }
 
             // Se não encontrou solução, remove a rainha e restaura o tabuleiro
-            printf("Rainha removida da linha %d, coluna %d\n", linha, j);
+            printf("Rainha removida da linha %d, coluna %d\n", linha + 1, j + 1);
             r[linha] = 0;
-
         }
     }
 
     return 0;
 }
-
 
 unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
     tabuleiro tab;
