@@ -7,24 +7,27 @@ typedef struct tabuleiro{
     unsigned int** proibida;
 }tabuleiro;
 
-unsigned int mesmaDiagonal(unsigned int linha1, unsigned int coluna1, unsigned int linha2, unsigned int coluna2){
-    if(abs(linha1 - linha2) == abs(coluna1 - coluna2)){
-        return 1;
+void inicializaTabuleiro(unsigned int n, tabuleiro* tab, unsigned int k, casa *proibida){
+    tab->c = (casa**)malloc(n*sizeof(casa*));
+    tab->proibida = (unsigned int**)malloc(n*sizeof(unsigned int*));
+
+    for(unsigned int i = 0; i < n; i++){
+        tab->c[i] = (casa*)malloc(n*sizeof(casa));
+        tab->proibida[i] = (unsigned int*)malloc(n*sizeof(unsigned int));
+        for(unsigned j = 0; j < n; j++){
+            tab->c[i][j].linha = i;
+            tab->c[i][j].coluna = j;
+            tab->proibida[i][j] = 0;
+        }
     }
-    return 0;
+
+    for(unsigned i = 0; i < k; i++){
+        tab->proibida[proibida[i].linha-1][proibida[i].coluna-1] = 1;
+    }
+
 }
 
-unsigned int existeRainha(int linha, int coluna, tabuleiro* tab, int n) {
-    for (unsigned int i = 0; i < n; i++) {
-        if (i != linha && tab->proibida[i][coluna] == 3) {
-            return 1;
-        }
-        if (i != coluna && tab->proibida[linha][i] == 3) {
-            return 1;
-        }
-    }
-    return 0;
-}
+
 
 void imprimeTabuleiro(unsigned n, tabuleiro* tab){
     printf("\n");
@@ -44,16 +47,23 @@ unsigned int casaProibida(unsigned int linha, unsigned int coluna, tabuleiro* ta
 }
 
 unsigned int rainhaPodeSerColocada(unsigned int n, unsigned int linha, unsigned int coluna, unsigned int* r, tabuleiro* tab){
+    
+    if(r[linha] != 0){
+        printf("Linha %d já está ocupada\n", linha);
+        return 0;
+    }
+
     // Verificar se a coluna está vazia
     for (unsigned int i = 0; i < n; i++) {
-        if (r[i] == coluna) {
+        if ((r[i] == coluna + 1)) {
+            printf("Coluna %d já está ocupada\n", coluna);
             return 0;
         }
-    }
+    }    
     
     // Verificar diagonais superiores
     for (unsigned int i = 0; i < linha; i++) {
-        if (r[i] != 0 && abs(r[i] - coluna) == abs(i - linha)) {
+        if (r[i] != 0 && abs(r[i] - coluna - 1) == abs(i - linha)) {
             return 0;
         }
     }
@@ -61,92 +71,31 @@ unsigned int rainhaPodeSerColocada(unsigned int n, unsigned int linha, unsigned 
     return 1;
 }
 
+//    r é um vetor de n posições (já alocado) a ser preenchido com a resposta:
+//      r[i] = j > 0 indica que a rainha da linha i+1 fica na coluna j;
+//      r[i] = 0     indica que não há rainha nenhuma na linha i+1
 unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned int* r, tabuleiro* tab){
     if(linha == n - 1){
         return 1;
     }
+    for(unsigned int j = 0; j < n; j++){
+        if(!casaProibida(linha, j, tab) && rainhaPodeSerColocada(n, linha, j, r, tab)){
+            r[linha] = j+1;
 
-    for(unsigned int i = 0; i < n; i++){
-        if(casaProibida(linha, i, tab)){
-            continue;
-        }
-        if(rainhaPodeSerColocada(n, linha, i, r, tab)){
-            r[linha] = i+1;
+            printf("Rainha colocada na linha %d, coluna %d\n", linha, j);
 
-            printf("Rainha colocada na linha %d, coluna %d\n", linha + 1, i + 1);
-
-            // Proibe a linha e a coluna
-            for(unsigned int j = 0; j < n; j++){
-                if(tab->proibida[linha][j] == 0){
-                    tab->proibida[linha][j] = 2;
-                    tab->proibida[j][i] = 2;
-                }
-                if(tab->proibida[j][i] == 0){
-                    tab->proibida[j][i] = 2;
-                }
-            }
-
-            for(unsigned int j = 0; j < n; j++){
-                for(unsigned int k = 0; k < n; k++){
-                    if(mesmaDiagonal(linha, i, j, k) && tab->proibida[j][k] == 0 ){
-                        tab->proibida[j][k] = 2;
-                    }
-                }
-            }
-
-            tab->proibida[linha][i] = 3;
-
-            imprimeTabuleiro(n, tab);
             if(rainhasBacktrackingRec(n, linha+1, r, tab)){
                 return 1;
             }
 
             // Se não encontrou solução, remove a rainha e restaura o tabuleiro
-            printf("Rainha removida da linha %d, coluna %d\n", linha + 1, i + 1);
-            r[i] = 0;
-            for(unsigned int j = 0; j < n; j++){
-                if((r[j] == 0)&&(tab->proibida[linha][j] == 2)){
-                    tab->proibida[linha][j] = 0;
-                    tab->proibida[j][i] = 0;
-                }
-            }
-            for(unsigned int j = 0; j < n; j++){
-                for(unsigned int k = 0; k < n; k++){
-                    if(mesmaDiagonal(linha, i, j, k) && tab->proibida[j][k] == 2 && (r[j] == 0)){
-                        tab->proibida[j][k] = 0;    
-                    }
-                }
-            }
-            
-            tab->proibida[linha][i] = 0;
+            printf("Rainha removida da linha %d, coluna %d\n", linha, j);
+            r[linha] = 0;
 
-            imprimeTabuleiro(n, tab);
-            tab->proibida[linha][i] = 0; // Restaure a célula removida
         }
     }
 
     return 0;
-}
-
-
-void inicializaTabuleiro(unsigned int n, tabuleiro* tab, unsigned int k, casa *proibida){
-    tab->c = (casa**)malloc(n*sizeof(casa*));
-    tab->proibida = (unsigned int**)malloc(n*sizeof(unsigned int*));
-
-    for(unsigned int i = 0; i < n; i++){
-        tab->c[i] = (casa*)malloc(n*sizeof(casa));
-        tab->proibida[i] = (unsigned int*)malloc(n*sizeof(unsigned int));
-        for(unsigned j = 0; j < n; j++){
-            tab->c[i][j].linha = i;
-            tab->c[i][j].coluna = j;
-            tab->proibida[i][j] = 0;
-        }
-    }
-
-    for(unsigned i = 0; i < k; i++){
-        tab->proibida[proibida[i].linha-1][proibida[i].coluna-1] = 1;
-    }
-
 }
 
 
@@ -175,11 +124,9 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
 //
 // n, c e r são como em rainhas_bt()
 
+// O Algoritmo ConjIndep(G, n, I, C) abaixo recebe um grafo G, um inteiro positivo n, um conjunto I ⊆ V(G) independente em G e um conjunto 
+// C ⊆ V(G) − I satisfazendo ΓG(I)∩C = ∅, e devolve um conjunto R independente em G com n vértices satisfazendo I ⊆ R ⊆ I∪C, ou "não" caso não exista tal conjunto.
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r) {
+    return NULL;
 
-  n = n;
-  k = k;
-  c = c;
-
-  return r;
 }
