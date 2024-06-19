@@ -2,37 +2,80 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
 typedef struct tabuleiro
 {
     casa **c;
     unsigned int **proibida;
 } tabuleiro;
 
-typedef struct nodo
+typedef struct Nodo
 {
     unsigned int vertice;
     unsigned int proibida;
-    struct nodo *prox;
-} nodo;
+    struct Nodo *prox;
+} Nodo;
 
 typedef struct grafo
 {
-    nodo **listasAdj;
+    Nodo **listasAdj;
     unsigned int tam;
-} grafo;
+    unsigned int tam2;
+} Grafo;
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Protótipos
+
+// Backtracking
 void inicializaTabuleiro(unsigned int n, tabuleiro *tab, unsigned int k, casa *proibida);
 void imprimeTabuleiro(unsigned n, tabuleiro *tab);
 unsigned int casaProibida(unsigned int linha, unsigned int coluna, tabuleiro *tab);
 unsigned int rainhaPodeSerColocada(unsigned int n, unsigned int linha, unsigned int coluna, unsigned int *r);
 unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned int *r, tabuleiro *tab);
-nodo *criaNodo(unsigned int vertice, nodo *prox);
-grafo *criaGrafo(unsigned int n);
-unsigned int conjIndependente(unsigned int n, unsigned int *Grafo, unsigned int *Independente, unsigned int *Conjunto, unsigned int *r);
+
+
+// Grafo
+
+// Cria um novo Nodo
+Nodo *criaNodo(unsigned int v);
+// Cria um novo Grafo
+Grafo *criaGrafo(unsigned int numVertices);
+// Insere uma aresta entre dois vértices
+void insereAresta(Grafo *Grafo,  unsigned int v1, unsigned int v2);
+// Verifica se um vértice é adjacente a outro
+int ehAdjacente(Grafo *Grafo, unsigned int v1,unsigned int v2);
+// Imprime o Grafo
+void imprimeGrafo(Grafo *Grafo);
+// Copia um Nodo
+Nodo* copiaNodo(Nodo *Nodo);
+
+// Remove um vértice do Grafo e retorna uma copia dele
+int removeNodo(Grafo *grafo, unsigned int v);
+
+// Retorna o ultimo vértice do Grafo
+unsigned int encontraUltimo(Grafo *g);
+
+// Monta um conjunto com todos os vertices do grafo que não sejam adjacentes a nenhum vertice do grafo independente
+Grafo* conjuntoNaoAdjacente(Grafo *grafo, Grafo *independente);
+
+// Adiciona um vértice ao grafo independente
+unsigned int adicionaVertice(Grafo *grafo, Grafo *independente, unsigned int v);
+
+unsigned int *conjIndependente(unsigned int n, Grafo *grafo, Grafo *Independente, Grafo *Conjunto, unsigned int *r, casa *Proibidas);
 casa *ordenaVetorDeTuplas(casa *vetor, unsigned int n);
 void imprimeVetorDeTuplas(casa *vetor, unsigned int n);
 casa *copiaVetorDeTuplas(casa *vetor, unsigned int n);
+unsigned int montaConjunto(Grafo *g, Grafo *c, Grafo *Independente);
+void montaGrafo(Grafo *g, casa *proibidas);
+int casaProibidaDois(unsigned int i, unsigned int j, casa *proibidas);
+unsigned int calcSqrt(unsigned int n);
+void liberaGrafo(Grafo *g);
+void liberaVetorDeTuplas(casa *vetor);
+void adicionaAoConjunto(Grafo *g, Grafo *Independente, Nodo *n);
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Funções para nRainhas com backtracking
 void inicializaTabuleiro(unsigned int n, tabuleiro *tab, unsigned int k, casa *proibida)
@@ -155,27 +198,121 @@ unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *
     return r;
 }
 
-// Funções para nRainhas com grafos
-nodo *criaNodo(unsigned int vertice, nodo *prox)
-{
-    nodo *novo = (nodo *)malloc(sizeof(nodo));
-    novo->vertice = vertice;
-    novo->prox = prox;
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Funções para nRainhas com grafo
+
+Nodo *criaNodo(unsigned int v){
+    Nodo *novo = (Nodo *)malloc(sizeof(Nodo));
+    novo->vertice = v;
+    novo->prox = NULL;
     return novo;
 }
 
-grafo *criaGrafo(unsigned int n)
-{
-    grafo *g = (grafo *)malloc(sizeof(grafo));
-    g->tam = n;
-    g->listasAdj = (nodo **)malloc(n * sizeof(nodo *));
+Grafo *criaGrafo(unsigned int numVertices){
+    Grafo *grafo = (Grafo *)malloc(sizeof(Grafo));
 
-    for (unsigned int i = 0; i < n; i++)
-    {
-        g->listasAdj[i] = NULL;
+    grafo->tam = numVertices * numVertices;
+    grafo->tam2 = 0;
+    grafo->listasAdj = (Nodo **)malloc(grafo->tam * sizeof(Nodo *));
+
+    
+    for(unsigned int i = 0; i < grafo->tam; i++)
+        grafo->listasAdj[i] = NULL;
+    
+    return grafo;
+}
+
+void insereAresta(Grafo *grafo, unsigned int v1, unsigned int v2){
+    // Insere o vértice v2 na lista de adjacência de v1
+    Nodo *novo = criaNodo(v2);
+    novo->prox = grafo->listasAdj[v1];
+    grafo->listasAdj[v1] = novo;
+
+    // Insere o vértice v1 na lista de adjacência de v2
+    novo = criaNodo(v1);
+    novo->prox = grafo->listasAdj[v2];
+    grafo->listasAdj[v2] = novo;
+}
+
+void imprimeGrafo(Grafo *grafo){
+    for(unsigned int i = 0; i < grafo->tam; i++){
+        Nodo *nodo = grafo->listasAdj[i];
+        if(nodo == NULL)
+            continue;
+
+        printf("Lista de adjacência do vértice %d\n", i);
+        while(nodo){
+            printf("%d -> ", nodo->vertice);
+            nodo = nodo->prox;
+        }
+        printf("NULL\n");
+    }
+}
+
+Nodo* copiaNodo(Nodo *nodo){
+    if(nodo == NULL)
+        return NULL;
+    
+    Nodo *novo = criaNodo(nodo->vertice);
+    novo->prox = copiaNodo(nodo->prox);
+    return novo;
+}
+
+int ehAdjacente(Grafo *grafo,unsigned int v1,unsigned int v2){
+    if(v1 == v2){
+        // printf("%d é adjacente a %d\n", v1, v2);
+        return 1;
     }
 
-    return g;
+    Nodo *nodo = grafo->listasAdj[v1];
+    while(nodo){
+        if(nodo->vertice == v2){
+            // printf("%d é adjacente a %d\n", v1, v2);
+            return 1;
+        }
+        nodo = nodo->prox;
+    }
+    // printf("%d não é adjacente a %d\n", v1, v2);
+    return 0;
+}
+
+// TODO: mudar o nome da função 
+int casaProibidaDois(unsigned int i, unsigned int j, casa *proibidas)
+{
+    for (unsigned int k = 0; k < 8; k++)
+    {
+        if (proibidas[k].linha == i && proibidas[k].coluna == j)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+void montaGrafo(Grafo *g, casa *proibidas) {
+    unsigned int tamanhoTabuleiro = calcSqrt(g->tam);
+    for (unsigned int i = 0; i < g->tam; i++) {
+        unsigned int iLinha = i / tamanhoTabuleiro;
+        unsigned int iColuna = i % tamanhoTabuleiro;
+
+        for (unsigned int j = i + 1; j < g->tam; j++) {
+            if (casaProibidaDois(i, j, proibidas)) {
+                continue;
+            }
+
+            unsigned int jLinha = j / tamanhoTabuleiro;
+            unsigned int jColuna = j % tamanhoTabuleiro;
+
+            if (iLinha == jLinha || // mesma linha
+                iColuna == jColuna || // mesma coluna
+                iLinha - jLinha == iColuna - jColuna) // mesma diagonal
+            {
+                // printf("Adicionando aresta entre %d e %d\n", i, j);
+                insereAresta(g, i, j);
+            }
+        }
+    }
 }
 
 casa *ordenaVetorDeTuplas(casa *vetor, unsigned int n)
@@ -230,15 +367,202 @@ casa *copiaVetorDeTuplas(casa *vetor, unsigned int n)
     return ordenaVetorDeTuplas(c, n);
 }
 
-//------------------------------------------------------------------------------
-// computa uma resposta para a instância (n,c) do problema das n
-// rainhas com casas proibidas usando a modelagem do problema como
-// conjunto independente de um grafo
-//
-// n, c e r são como em rainhas_bt()
+unsigned int encontraUltimo(Grafo *g){
+    unsigned int ultimo = g->tam + 1;
+    for(unsigned int i = 0; i < g->tam; i++){
+        Nodo *nodo = g->listasAdj[i];
+        if(nodo == NULL)
+            continue;
+        else
+            ultimo = i;
+    }
 
-// O Algoritmo ConjIndep(G, n, I, C) abaixo recebe um grafo G, um inteiro positivo n, um conjunto I ⊆ V(G) independente em G e um conjunto
-// C ⊆ V(G) − I satisfazendo ΓG(I)∩C = ∅, e devolve um conjunto R independente em G com n vértices satisfazendo I ⊆ R ⊆ I∪C, ou "não" caso não exista tal conjunto.
+    return ultimo;
+}
+
+unsigned int *conjIndependente(unsigned int n, Grafo *grafo, Grafo *Independente, Grafo *Conjunto, unsigned int *r, casa *Proibidas){
+    if (Independente->tam2 == n)
+    {
+        printf("Conjunto independente encontrado\n");
+        unsigned int j = 0;
+        unsigned int *r = (unsigned int *)malloc(n * sizeof(unsigned int));
+        
+        for(int i = 0; i < Independente->tam; i++){
+            if(Independente->listasAdj[i] != NULL){
+                r[j] = i + 1;
+                printf("Rainha %d na linha %d\n", j + 1, i + 1);
+                j++;
+            }
+        }
+        return r;
+    }
+
+    if (Conjunto->tam2 + Independente->tam2 < n)
+    {
+        printf("Tamanho do Conjunto: %d\n Tamanho do Independente: %d\n", Conjunto->tam2, Independente->tam2);
+        printf("Conjunto independente não encontrado\n");
+        return NULL;
+    }
+
+    unsigned int vertice = encontraUltimo(Conjunto);
+    if(vertice > grafo->tam){
+        return NULL;
+    }
+
+    int nodoR = removeNodo(Conjunto, vertice);
+    printf("Nodo Novo %d\n", nodoR);
+    if (nodoR == NULL) {
+        printf("Erro ao remover vértice\n");
+        return NULL;
+    }
+
+    adicionaVertice(grafo, Independente, nodoR);
+
+
+    Conjunto = conjuntoNaoAdjacente(grafo, Independente);
+
+    printf("I:\n");
+    imprimeGrafo(Independente);
+
+    // printf("C:\n");
+    // imprimeGrafo(Conjunto);
+
+    r = conjIndependente(n, grafo, Independente, Conjunto, r, Proibidas);
+
+    if(r && r[0] != 0){
+        printf("tem r\n");
+        return r;
+    }
+    
+    
+    return conjIndependente(n, grafo, Independente, Conjunto, r, Proibidas);
+}
+
+
+unsigned int calcSqrt(unsigned int n)
+{
+    unsigned int i = 1;
+    while (i * i < n)
+    {
+        i++;
+        if (i * i == n)
+        {
+            return i;
+        }
+    }
+
+    return 0;
+}
+
+
+
+// Checa se cada Nodo n do Grafo g é adjacente a algum Nodo da lista de adjacencia do Nodo i do Grafo Independente
+// Se não for, adiciona a aresta ao Grafo c
+unsigned int montaConjunto(Grafo *g, Grafo *c, Grafo *Independente) {
+    c->tam2 = 0;
+    printf("Montando Conjunto\n");
+
+    // Iterar sobre todos os vértices do grafo g
+    for (unsigned int i = 0; i < g->tam; i++) {
+        unsigned int adjacente = 0;
+
+        // Verificar se o vértice i é adjacente a qualquer vértice de Independente
+        for (unsigned int j = 0; j < Independente->tam; j++) {
+            if (Independente->listasAdj[j] != NULL && ehAdjacente(g, i, j)) {
+                adjacente = 1;
+                break;
+            }
+        }
+
+        // Se o vértice i não é adjacente a nenhum vértice de Independente, adicionar ao grafo c
+        if (!adjacente) {
+            c->listasAdj[i] = copiaNodo(g->listasAdj[i]);
+            c->tam2++;
+        }
+    }
+
+    return c->tam2;
+}
+
+Grafo* conjuntoNaoAdjacente(Grafo *grafo, Grafo *independente) {
+    Grafo *naoAdjacente = criaGrafo(grafo->tam);
+    naoAdjacente->tam2 = 0;
+
+    int adjacente = 0;
+    for (unsigned int i = 0; i < grafo->tam; i++) {
+        adjacente = 0;
+        for (unsigned int j = 0; j < independente->tam; j++) {
+            // printf("Verificando se vértice %d é adjacente ao vértice %d do grafo independente\n", i, j);
+            if (independente->listasAdj[j] != NULL && ehAdjacente(grafo, i, j)) {
+                adjacente = 1;
+                // printf("Vértice %d é adjacente ao vértice %d do grafo independente\n", i, j);
+                break;
+            }
+        }
+        if (!adjacente) {
+            // printf("Vértice %d não é adjacente a nenhum vértice do grafo independente\n", i);
+            naoAdjacente->listasAdj[i] = copiaNodo(grafo->listasAdj[i]);
+            naoAdjacente->tam2++;
+        }
+    }
+
+    return naoAdjacente;
+}
+
+void liberaGrafo(Grafo *g) {
+    for (unsigned int i = 0; i < g->tam; i++) {
+        Nodo *n = g->listasAdj[i];
+        while (n != NULL) {
+            Nodo *temp = n;
+            n = n->prox;
+            free(temp);
+        }
+    }
+    free(g->listasAdj);
+    free(g);
+}
+
+void liberaVetorDeTuplas(casa *vetor) {
+    free(vetor);
+}
+
+void adicionaAoConjunto(Grafo *g, Grafo *Independente, Nodo *n) {
+    Independente->listasAdj[Independente->tam] = n;
+    Independente->tam2++;
+
+    for (unsigned int i = 0; i < g->tam; i++) {
+        Nodo *temp = g->listasAdj[i];
+        while (temp != NULL) {
+            if (temp->vertice == n->vertice) {
+                break;
+            }
+            temp = temp->prox;
+        }
+    }
+}
+
+unsigned int adicionaVertice(Grafo *grafo, Grafo *independente, unsigned int v){
+    if (independente->listasAdj[v] != NULL) {
+        printf("Vértice %d já está no grafo independente\n", v);
+        return 0;
+    }
+
+    if (independente->listasAdj[v] == NULL) {
+        printf("Vértice %d adicionado ao grafo independente\n", v);
+        independente->listasAdj[v] = copiaNodo(grafo->listasAdj[v]);
+        independente->tam2++;
+        return 1;
+    }
+    return 0;
+}
+
+int removeNodo(Grafo *grafo, unsigned int v){
+    Nodo *nodo = grafo->listasAdj[v];
+    grafo->listasAdj[v] = NULL;
+    return v;
+}
+
+
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r)
 {
     // zera o vetor resposta
@@ -247,16 +571,33 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
         r[i] = 0;
     }
 
-    // Cria o grafo
-    grafo *g = criaGrafo(n);
-    g = g; // só para evitar warning de variável não usada
-
     // Cria o vetor de casas proibidas ordenado
     casa *cProibida = copiaVetorDeTuplas(c, k);
     // imprimeVetorDeTuplas(cProibida, k);
-    
-    // Cria o vetor de casas proibidas ordenado
 
+    // Cria o Grafo
+    Grafo *g = criaGrafo(n);
+    montaGrafo(g, cProibida);
+    printf("Grafo\n");
+    imprimeGrafo(g);
+
+    // Cria o conjunto independente
+    Grafo *Independente = criaGrafo(n);
+    Independente->listasAdj[0] = g->listasAdj[0];
+    Independente->tam2 = 1;
+
+
+
+    // printf("Conjunto Independente\n");
+    // imprimeGrafo(Independente);
+
+    Grafo *Conjunto = conjuntoNaoAdjacente(g, Independente);
+    // printf("Conjunto\n");
+    // imprimeGrafo(Conjunto);
+    
+    conjIndependente(n, g, Independente, Conjunto, r, cProibida);
+   // Cria o vetor de casas proibidas ordenado
+    liberaGrafo(g);
 
     return NULL;
 }

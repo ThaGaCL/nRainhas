@@ -42,7 +42,7 @@ static casa *proibe_diagonais(unsigned int n, casa *proibido) {
 //------------------------------------------------------------------------------
 int main (void) {
 
-  unsigned int n = 8; // tamanho do tabuleiro
+  unsigned int n = 4; // tamanho do tabuleiro
   unsigned int *resposta = malloc(n*sizeof(unsigned int)); // vetor resposta
 
   unsigned int k = 2 * n; // número de casas proibidas

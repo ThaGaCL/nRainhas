@@ -1,5 +1,14 @@
 {
     "files.associations": {
-        "tabuleiro.h": "c"
+        "tabuleiro.h": "c",
+        "string": "c",
+        "fstream": "c",
+        "istream": "c",
+        "new": "c",
+        "ostream": "c",
+        "sstream": "c",
+        "functional": "c",
+        "typeinfo": "c",
+        "*.inc": "c"
     }
 }
