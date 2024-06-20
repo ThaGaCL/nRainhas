@@ -167,15 +167,11 @@ unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned
         {
             r[linha] = j + 1;
 
-            // printf("Rainha colocada na linha %d, coluna %d\n", linha + 1, j + 1);
-
             if (rainhasBacktrackingRec(n, linha + 1, r, tab))
             {
                 return 1;
             }
 
-            // Se não encontrou solução, remove a rainha e restaura o tabuleiro
-            // printf("Rainha removida da linha %d, coluna %d\n", linha + 1, j + 1);
             r[linha] = 0;
         }
     }
@@ -292,26 +288,27 @@ int casaProibidaDois(unsigned int i, unsigned int j, casa *proibidas)
 
 void montaGrafo(Grafo *g, casa *proibidas) {
     unsigned int tamanhoTabuleiro = calcSqrt(g->tam);
-    for (unsigned int i = 0; i < g->tam; i++) {
-        unsigned int iLinha = i / tamanhoTabuleiro;
-        unsigned int iColuna = i % tamanhoTabuleiro;
+    for(int i = 0; i < g->tam; i++){
+        int linha = i / tamanhoTabuleiro;
+        int coluna = i % tamanhoTabuleiro;
+        
+        if(casaProibidaDois(linha, coluna, proibidas)){
+            continue;
+        }
 
-        for (unsigned int j = i + 1; j < g->tam; j++) {
-            if (casaProibidaDois(i, j, proibidas)) {
+        for(int j = i+1; j < g->tam; j++){
+            int linha2 = j / tamanhoTabuleiro;
+            int coluna2 = j % tamanhoTabuleiro;
+
+            if(casaProibidaDois(linha2, coluna2, proibidas)){
                 continue;
             }
 
-            unsigned int jLinha = j / tamanhoTabuleiro;
-            unsigned int jColuna = j % tamanhoTabuleiro;
-
-            if (iLinha == jLinha || // mesma linha
-                iColuna == jColuna || // mesma coluna
-                iLinha - jLinha == iColuna - jColuna) // mesma diagonal
-            {
-                // printf("Adicionando aresta entre %d e %d\n", i, j);
+            if(linha == linha2 || coluna == coluna2 || linha - coluna == linha2 - coluna2 || linha + coluna == linha2 + coluna2){
                 insereAresta(g, i, j);
             }
         }
+
     }
 }
 
@@ -368,30 +365,38 @@ casa *copiaVetorDeTuplas(casa *vetor, unsigned int n)
 }
 
 unsigned int encontraUltimo(Grafo *g){
-    unsigned int ultimo = g->tam + 1;
+    unsigned int ultimo = g->tam2;
+    // printf("Tam %d\n", g->tam2);
     for(unsigned int i = 0; i < g->tam; i++){
         Nodo *nodo = g->listasAdj[i];
+        // printf("Nodo %d\n", i);
         if(nodo == NULL)
             continue;
         else
             ultimo = i;
     }
 
+    // printf("Ultimo %d\n", ultimo);
     return ultimo;
 }
 
 unsigned int *conjIndependente(unsigned int n, Grafo *grafo, Grafo *Independente, Grafo *Conjunto, unsigned int *r, casa *Proibidas){
+    // printf("Grafo tam %d\n", grafo->tam);   
     if (Independente->tam2 == n)
     {
-        printf("Conjunto independente encontrado\n");
+        // printf("Conjunto independente encontrado\n");
         unsigned int j = 0;
-        unsigned int *r = (unsigned int *)malloc(n * sizeof(unsigned int));
-        
+
         for(int i = 0; i < Independente->tam; i++){
             if(Independente->listasAdj[i] != NULL){
-                r[j] = i + 1;
-                printf("Rainha %d na linha %d\n", j + 1, i + 1);
+                unsigned int iColuna = i % calcSqrt(grafo->tam);
+                unsigned int iLinha = i / calcSqrt(grafo->tam);
+
+                r[j] = iColuna + 1;
                 j++;
+            }
+            else{
+                r[j] =  0;
             }
         }
         return r;
@@ -399,21 +404,20 @@ unsigned int *conjIndependente(unsigned int n, Grafo *grafo, Grafo *Independente
 
     if (Conjunto->tam2 + Independente->tam2 < n)
     {
-        printf("Tamanho do Conjunto: %d\n Tamanho do Independente: %d\n", Conjunto->tam2, Independente->tam2);
-        printf("Conjunto independente não encontrado\n");
-        return NULL;
+        // printf("Conjunto independente não encontrado\n");
+        return r;
     }
 
+    // printf("Conjunto tam %d\n", Conjunto->tam2);
     unsigned int vertice = encontraUltimo(Conjunto);
-    if(vertice > grafo->tam){
-        return NULL;
+    if(vertice > Conjunto->tam){
+        return r;
     }
 
     int nodoR = removeNodo(Conjunto, vertice);
-    printf("Nodo Novo %d\n", nodoR);
+    // printf("Nodo Novo %d\n", nodoR);
     if (nodoR == NULL) {
-        printf("Erro ao remover vértice\n");
-        return NULL;
+        return r;
     }
 
     adicionaVertice(grafo, Independente, nodoR);
@@ -421,20 +425,15 @@ unsigned int *conjIndependente(unsigned int n, Grafo *grafo, Grafo *Independente
 
     Conjunto = conjuntoNaoAdjacente(grafo, Independente);
 
-    printf("I:\n");
-    imprimeGrafo(Independente);
-
-    // printf("C:\n");
-    // imprimeGrafo(Conjunto);
 
     r = conjIndependente(n, grafo, Independente, Conjunto, r, Proibidas);
 
     if(r && r[0] != 0){
-        printf("tem r\n");
+        // printf("tem r\n");
         return r;
     }
     
-    
+    // printf("Não tem r\n");
     return conjIndependente(n, grafo, Independente, Conjunto, r, Proibidas);
 }
 
@@ -460,7 +459,7 @@ unsigned int calcSqrt(unsigned int n)
 // Se não for, adiciona a aresta ao Grafo c
 unsigned int montaConjunto(Grafo *g, Grafo *c, Grafo *Independente) {
     c->tam2 = 0;
-    printf("Montando Conjunto\n");
+    // printf("Montando Conjunto\n");
 
     // Iterar sobre todos os vértices do grafo g
     for (unsigned int i = 0; i < g->tam; i++) {
@@ -543,12 +542,12 @@ void adicionaAoConjunto(Grafo *g, Grafo *Independente, Nodo *n) {
 
 unsigned int adicionaVertice(Grafo *grafo, Grafo *independente, unsigned int v){
     if (independente->listasAdj[v] != NULL) {
-        printf("Vértice %d já está no grafo independente\n", v);
+        // printf("Vértice %d já está no grafo independente\n", v);
         return 0;
     }
 
     if (independente->listasAdj[v] == NULL) {
-        printf("Vértice %d adicionado ao grafo independente\n", v);
+        // printf("Vértice %d adicionado ao grafo independente\n", v);
         independente->listasAdj[v] = copiaNodo(grafo->listasAdj[v]);
         independente->tam2++;
         return 1;
@@ -578,8 +577,8 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
     // Cria o Grafo
     Grafo *g = criaGrafo(n);
     montaGrafo(g, cProibida);
-    printf("Grafo\n");
-    imprimeGrafo(g);
+    // printf("Grafo\n");
+    // imprimeGrafo(g);
 
     // Cria o conjunto independente
     Grafo *Independente = criaGrafo(n);
@@ -599,5 +598,5 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
    // Cria o vetor de casas proibidas ordenado
     liberaGrafo(g);
 
-    return NULL;
+    return r;
 }
