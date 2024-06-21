@@ -35,14 +35,14 @@ static casa *proibe_diagonais(unsigned int n, casa *proibido) {
     proibido[i+1].coluna = n - p + 1;
   }
 
-  return proibido + 2*n; // devolve o endereço a partir do qual proibir novas posições??? acho???
+  return proibido + 2*n;
 }
 
 // 
 //------------------------------------------------------------------------------
 int main (void) {
 
-  unsigned int n = 8; // tamanho do tabuleiro
+  unsigned int n = 7; // tamanho do tabuleiro
   unsigned int *resposta = malloc(n*sizeof(unsigned int)); // vetor resposta
 
   unsigned int k = 2 * n; // número de casas proibidas

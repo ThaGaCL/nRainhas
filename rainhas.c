@@ -23,7 +23,6 @@ typedef struct grafo
     unsigned int tam2;
 } Grafo;
 
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Protótipos
@@ -33,8 +32,8 @@ void inicializaTabuleiro(unsigned int n, tabuleiro *tab, unsigned int k, casa *p
 void imprimeTabuleiro(unsigned n, tabuleiro *tab);
 unsigned int casaProibida(unsigned int linha, unsigned int coluna, tabuleiro *tab);
 unsigned int rainhaPodeSerColocada(unsigned int n, unsigned int linha, unsigned int coluna, unsigned int *r);
-unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned int *r, tabuleiro *tab);
-
+// unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned int *r, tabuleiro *tab, unsigned int *lProibida, unsigned int  maiorSolucao);
+unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned int *r, unsigned int *melhorR, tabuleiro *tab, unsigned int *lProibida, unsigned int maiorSolucao);
 
 // Grafo
 
@@ -52,7 +51,7 @@ void imprimeGrafo(Grafo *Grafo);
 Nodo* copiaNodo(Nodo *Nodo);
 
 // Remove um vértice do Grafo e retorna uma copia dele
-int removeNodo(Grafo *grafo, unsigned int v);
+unsigned int removeNodo(Grafo *grafo, unsigned int v);
 
 // Retorna o ultimo vértice do Grafo
 unsigned int encontraUltimo(Grafo *g);
@@ -67,9 +66,8 @@ unsigned int *conjIndependente(unsigned int n, Grafo *grafo, Grafo *Independente
 casa *ordenaVetorDeTuplas(casa *vetor, unsigned int n);
 void imprimeVetorDeTuplas(casa *vetor, unsigned int n);
 casa *copiaVetorDeTuplas(casa *vetor, unsigned int n);
-unsigned int montaConjunto(Grafo *g, Grafo *c, Grafo *Independente);
-void montaGrafo(Grafo *g, casa *proibidas);
-int casaProibidaDois(unsigned int i, unsigned int j, casa *proibidas);
+void montaGrafo(Grafo *g, casa *proibidas, unsigned int tamProibidas);
+int casaProibidaDois(unsigned int i, unsigned int j, unsigned int tamProibidas, casa *proibidas, Grafo *g);
 unsigned int calcSqrt(unsigned int n);
 void liberaGrafo(Grafo *g);
 void liberaVetorDeTuplas(casa *vetor);
@@ -77,7 +75,7 @@ void adicionaAoConjunto(Grafo *g, Grafo *Independente, Nodo *n);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Funções para nRainhas com backtracking
+// Funções para nRainhas com backtracking //
 void inicializaTabuleiro(unsigned int n, tabuleiro *tab, unsigned int k, casa *proibida)
 {
     tab->c = (casa **)malloc(n * sizeof(casa *));
@@ -128,16 +126,14 @@ unsigned int rainhaPodeSerColocada(unsigned int n, unsigned int linha, unsigned 
     // Verificar se a linha já está ocupada
     if (r[linha] != 0)
     {
-        // printf("Linha %d já está ocupada\n", linha);
         return 0;
     }
 
     // Verificar se a coluna está vazia
     for (unsigned int i = 0; i < n; i++)
     {
-        if (r[i] == coluna + 1)
-        { // coluna é base 0, r é base 1
-            // printf("Coluna %d já está ocupada\n", coluna);
+        if (r[i] == coluna + 1) // coluna é base 0, r é base 1
+        {
             return 0;
         }
     }
@@ -145,9 +141,17 @@ unsigned int rainhaPodeSerColocada(unsigned int n, unsigned int linha, unsigned 
     // Verificar diagonais superiores
     for (unsigned int i = 0; i < linha; i++)
     {
-        if (r[i] != 0 && r[i] - 1 - coluna == i - linha)
+        if (r[i] != 0 && abs((int)(r[i] - 1) - (int)coluna) == abs((int)i - (int)linha))
         {
-            // printf("Diagonais superior conflitante na linha %d\n", i);
+            return 0;
+        }
+    }
+
+    // Verificar diagonais inferiores
+    for (unsigned int i = linha + 1; i < n; i++)
+    {
+        if (r[i] != 0 && abs((int)(r[i] - 1) - (int)coluna) == abs((int)i - (int)linha))
+        {
             return 0;
         }
     }
@@ -155,19 +159,71 @@ unsigned int rainhaPodeSerColocada(unsigned int n, unsigned int linha, unsigned 
     return 1;
 }
 
-unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned int *r, tabuleiro *tab)
+// unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned int *r, tabuleiro *tab, unsigned int *lProibida, unsigned int  maiorSolucao)
+// {
+
+//     if (linha == n)
+//     {
+//         return 1;
+//     }
+//     for (unsigned int j = 0; j < n; j++)
+//     {
+//         if(lProibida[linha] == 1){
+//             if(rainhasBacktrackingRec(n, linha + 1, r, tab, lProibida, maiorSolucao)){
+//                 return 1;
+//             }
+//         }
+//         if (!casaProibida(linha, j, tab) && rainhaPodeSerColocada(n, linha, j, r))
+//         {
+//             r[linha] = j + 1;
+            
+//             if(linha > maiorSolucao - 1){
+//                 maiorSolucao = linha;
+//             }
+
+//             if (rainhasBacktrackingRec(n, linha + 1, r, tab, lProibida, maiorSolucao))
+//             {
+//                 return 1;
+//             }
+
+//             r[linha] = 0;
+//         }
+
+//     }
+
+//     return 0;
+// }
+
+unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned int *r, unsigned int *melhorR, tabuleiro *tab, unsigned int *lProibida, unsigned int maiorSolucao)
 {
     if (linha == n)
     {
         return 1;
     }
+
+    if(linha >= maiorSolucao)
+    {
+        maiorSolucao = linha + 1;
+        for(unsigned int i = 0; i < n; i++)
+        {
+                    melhorR[i] = r[i];
+        }
+    }
+
     for (unsigned int j = 0; j < n; j++)
     {
+        if(lProibida[linha] == 1)
+        {
+            if(rainhasBacktrackingRec(n, linha + 1, r, melhorR, tab, lProibida, maiorSolucao))
+            {
+                return 1;
+            }
+        }
         if (!casaProibida(linha, j, tab) && rainhaPodeSerColocada(n, linha, j, r))
         {
             r[linha] = j + 1;
 
-            if (rainhasBacktrackingRec(n, linha + 1, r, tab))
+            if (rainhasBacktrackingRec(n, linha + 1, r, melhorR, tab, lProibida, maiorSolucao))
             {
                 return 1;
             }
@@ -179,15 +235,49 @@ unsigned int rainhasBacktrackingRec(unsigned int n, unsigned int linha, unsigned
     return 0;
 }
 
+// Retorna se uma linha inteira está proibida
+unsigned int linhaProibida(unsigned int linha, unsigned int tamProibidas, casa *proibidas)
+{
+    unsigned int proibida = 0; // Flag para verificar se a linha está proibida 
+    for (unsigned int i = 0; i < tamProibidas; i++)
+    {
+        if (proibidas[i].linha - 1 == linha)
+        {
+            proibida++;
+        }
+    }
+
+    if(proibida == tamProibidas/2)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
 unsigned int *rainhas_bt(unsigned int n, unsigned int k, casa *c, unsigned int *r)
 {
     tabuleiro tab;
     inicializaTabuleiro(n, &tab, k, c);
 
-    if (!rainhasBacktrackingRec(n, 0, r, &tab))
+    unsigned int* lProibida = malloc(n * sizeof(unsigned int));
+    unsigned int *melhorR = malloc(n * sizeof(unsigned int));
+    unsigned int maiorSolucao = 0;
+
+    for (unsigned int i = 0; i < n; i++)
     {
-        printf("Não foi possível encontrar uma solução\n");
-        imprimeTabuleiro(n, &tab);
+        lProibida[i] = linhaProibida(i, k, c);
+    }
+
+    if (!rainhasBacktrackingRec(n, 0, r, melhorR, &tab, lProibida, maiorSolucao))
+    {
+        // printf("Não foi possível encontrar uma solução com\n");
+        for(unsigned int i = 0; i < n; i++)
+        {
+            r[i] = melhorR[i];
+        }
+        // imprimeTabuleiro(n, &tab);
+    
         return NULL;
     }
 
@@ -273,11 +363,11 @@ int ehAdjacente(Grafo *grafo,unsigned int v1,unsigned int v2){
 }
 
 // TODO: mudar o nome da função 
-int casaProibidaDois(unsigned int i, unsigned int j, casa *proibidas)
+int casaProibidaDois(unsigned int i, unsigned int j, unsigned int tamProibidas, casa *proibidas, Grafo *g)
 {
-    for (unsigned int k = 0; k < 8; k++)
+    for (unsigned int k = 0; k < tamProibidas; k++)
     {
-        if (proibidas[k].linha == i && proibidas[k].coluna == j)
+        if (proibidas[k].linha - 1  == i && proibidas[k].coluna - 1 == j)
         {
             return 1;
         }
@@ -285,25 +375,31 @@ int casaProibidaDois(unsigned int i, unsigned int j, casa *proibidas)
     return 0;
 }
 
-
-void montaGrafo(Grafo *g, casa *proibidas) {
+void montaGrafo(Grafo *g, casa *proibidas, unsigned int tamProibidas) {
     unsigned int tamanhoTabuleiro = calcSqrt(g->tam);
-    for(int i = 0; i < g->tam; i++){
-        int linha = i / tamanhoTabuleiro;
-        int coluna = i % tamanhoTabuleiro;
+    for(unsigned int i = 0; i < g->tam; i++){
+        // Calcula qual a linha e coluna do tabuleiro o nodo i representa
+        unsigned int linha = i / tamanhoTabuleiro;
+        unsigned int coluna = i % tamanhoTabuleiro;
         
-        if(casaProibidaDois(linha, coluna, proibidas)){
+        // Se a linha e coluna do nodo i ele não tera arestas, logo pula pro proximo
+        if(casaProibidaDois(linha, coluna, tamProibidas, proibidas, g)){
+            // printf("Casa proibida nodo %d\n", i);
             continue;
         }
 
-        for(int j = i+1; j < g->tam; j++){
-            int linha2 = j / tamanhoTabuleiro;
-            int coluna2 = j % tamanhoTabuleiro;
+        for(unsigned int j = i+1; j < g->tam; j++){
+            // Calcula qual a linha e coluna do tabuleiro o nodo j representa
+            unsigned int linha2 = j / tamanhoTabuleiro;
+            unsigned int coluna2 = j % tamanhoTabuleiro;
 
-            if(casaProibidaDois(linha2, coluna2, proibidas)){
+            // Se a linha e coluna do nodo j ele não tera arestas com o nodo i, logo pula pro proximo
+            if(casaProibidaDois(linha2, coluna2, tamProibidas, proibidas, g)){
+                // printf("Casa proibida nodo %d\n", j);
                 continue;
             }
 
+            // Insere uma aresta se os nodos i e j estiverem na mesma linha, coluna ou diagonal
             if(linha == linha2 || coluna == coluna2 || linha - coluna == linha2 - coluna2 || linha + coluna == linha2 + coluna2){
                 insereAresta(g, i, j);
             }
@@ -380,64 +476,6 @@ unsigned int encontraUltimo(Grafo *g){
     return ultimo;
 }
 
-unsigned int *conjIndependente(unsigned int n, Grafo *grafo, Grafo *Independente, Grafo *Conjunto, unsigned int *r, casa *Proibidas){
-    // printf("Grafo tam %d\n", grafo->tam);   
-    if (Independente->tam2 == n)
-    {
-        // printf("Conjunto independente encontrado\n");
-        unsigned int j = 0;
-
-        for(int i = 0; i < Independente->tam; i++){
-            if(Independente->listasAdj[i] != NULL){
-                unsigned int iColuna = i % calcSqrt(grafo->tam);
-                unsigned int iLinha = i / calcSqrt(grafo->tam);
-
-                r[j] = iColuna + 1;
-                j++;
-            }
-            else{
-                r[j] =  0;
-            }
-        }
-        return r;
-    }
-
-    if (Conjunto->tam2 + Independente->tam2 < n)
-    {
-        // printf("Conjunto independente não encontrado\n");
-        return r;
-    }
-
-    // printf("Conjunto tam %d\n", Conjunto->tam2);
-    unsigned int vertice = encontraUltimo(Conjunto);
-    if(vertice > Conjunto->tam){
-        return r;
-    }
-
-    int nodoR = removeNodo(Conjunto, vertice);
-    // printf("Nodo Novo %d\n", nodoR);
-    if (nodoR == NULL) {
-        return r;
-    }
-
-    adicionaVertice(grafo, Independente, nodoR);
-
-
-    Conjunto = conjuntoNaoAdjacente(grafo, Independente);
-
-
-    r = conjIndependente(n, grafo, Independente, Conjunto, r, Proibidas);
-
-    if(r && r[0] != 0){
-        // printf("tem r\n");
-        return r;
-    }
-    
-    // printf("Não tem r\n");
-    return conjIndependente(n, grafo, Independente, Conjunto, r, Proibidas);
-}
-
-
 unsigned int calcSqrt(unsigned int n)
 {
     unsigned int i = 1;
@@ -451,36 +489,6 @@ unsigned int calcSqrt(unsigned int n)
     }
 
     return 0;
-}
-
-
-
-// Checa se cada Nodo n do Grafo g é adjacente a algum Nodo da lista de adjacencia do Nodo i do Grafo Independente
-// Se não for, adiciona a aresta ao Grafo c
-unsigned int montaConjunto(Grafo *g, Grafo *c, Grafo *Independente) {
-    c->tam2 = 0;
-    // printf("Montando Conjunto\n");
-
-    // Iterar sobre todos os vértices do grafo g
-    for (unsigned int i = 0; i < g->tam; i++) {
-        unsigned int adjacente = 0;
-
-        // Verificar se o vértice i é adjacente a qualquer vértice de Independente
-        for (unsigned int j = 0; j < Independente->tam; j++) {
-            if (Independente->listasAdj[j] != NULL && ehAdjacente(g, i, j)) {
-                adjacente = 1;
-                break;
-            }
-        }
-
-        // Se o vértice i não é adjacente a nenhum vértice de Independente, adicionar ao grafo c
-        if (!adjacente) {
-            c->listasAdj[i] = copiaNodo(g->listasAdj[i]);
-            c->tam2++;
-        }
-    }
-
-    return c->tam2;
 }
 
 Grafo* conjuntoNaoAdjacente(Grafo *grafo, Grafo *independente) {
@@ -555,12 +563,54 @@ unsigned int adicionaVertice(Grafo *grafo, Grafo *independente, unsigned int v){
     return 0;
 }
 
-int removeNodo(Grafo *grafo, unsigned int v){
-    Nodo *nodo = grafo->listasAdj[v];
+unsigned int removeNodo(Grafo *grafo, unsigned int v){
+    if(grafo->listasAdj[v] == NULL)
+        return grafo->tam + 1;
     grafo->listasAdj[v] = NULL;
     return v;
 }
 
+unsigned int *conjIndependente(unsigned int n, Grafo *grafo, Grafo *Independente, Grafo *Conjunto, unsigned int *r, casa *Proibidas){
+    if (Independente->tam2 == n)
+    {
+        unsigned int j = 0;
+
+        for(unsigned int i = 0; i < Independente->tam; i++){
+            if(Independente->listasAdj[i] != NULL){
+                unsigned int iColuna = i % calcSqrt(grafo->tam);
+                r[j] = iColuna + 1;
+                j++;
+            }
+            else{
+                r[j] =  0;  
+            }
+        }
+        return r;
+    }
+
+    if (Conjunto->tam2 + Independente->tam2 < n)
+        return NULL;
+    
+
+    unsigned int vertice = encontraUltimo(Conjunto);
+    if(vertice > Conjunto->tam)
+        return r;
+    
+    unsigned int nodoR = removeNodo(Conjunto, vertice);
+    if(nodoR > Conjunto->tam)
+        return r;
+    
+    adicionaVertice(grafo, Independente, nodoR);
+    Conjunto = conjuntoNaoAdjacente(grafo, Independente);
+
+    r = conjIndependente(n, grafo, Independente, Conjunto, r, Proibidas);
+
+    if(r && r[0] != 0){
+        return r;
+    }
+    
+    return conjIndependente(n, grafo, Independente, Conjunto, r, Proibidas);
+}
 
 unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *r)
 {
@@ -576,7 +626,7 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
 
     // Cria o Grafo
     Grafo *g = criaGrafo(n);
-    montaGrafo(g, cProibida);
+    montaGrafo(g, cProibida, k);
     // printf("Grafo\n");
     // imprimeGrafo(g);
 
@@ -584,8 +634,6 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
     Grafo *Independente = criaGrafo(n);
     Independente->listasAdj[0] = g->listasAdj[0];
     Independente->tam2 = 1;
-
-
 
     // printf("Conjunto Independente\n");
     // imprimeGrafo(Independente);
@@ -595,7 +643,7 @@ unsigned int *rainhas_ci(unsigned int n, unsigned int k, casa *c, unsigned int *
     // imprimeGrafo(Conjunto);
     
     conjIndependente(n, g, Independente, Conjunto, r, cProibida);
-   // Cria o vetor de casas proibidas ordenado
+
     liberaGrafo(g);
 
     return r;
